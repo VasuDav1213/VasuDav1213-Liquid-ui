@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Liquid Glass Command Orb</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+    :root {
+      --mouse-x: 50%;
+      --mouse-y: 50%;
+      --orb-mx: 50%;
+      --orb-my: 50%;
+      --glow-x: 0.5;
+      --glow-y: 0.5;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', system-ui, sans-serif;
+      overflow-x: hidden;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #050508;
+      position: relative;
+    }
+
+    /* Atmospheric background */
+    .atmosphere {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .atmosphere::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 30%, rgba(60, 80, 140, 0.35) 0%, transparent 55%),
+        radial-gradient(ellipse 70% 50% at 75% 70%, rgba(100, 60, 120, 0.28) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(40, 100, 130, 0.2) 0%, transparent 45%),
+        radial-gradient(ellipse 100% 80% at 50% 100%, rgba(20, 30, 60, 0.5) 0%, transparent 60%);
+    }
+
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.55;
+      animation: drift 18s ease-in-out infinite;
+    }
+
+    .blob-1 {
+      width: 420px;
+      height: 420px;
+      background: radial-gradient(circle, rgba(90, 120, 200, 0.5), transparent 70%);
+      top: -10%;
+      left: -5%;
+      animation-delay: 0s;
+    }
+
+    .blob-2 {
+      width: 360px;
+      height: 360px;
+      background: radial-gradient(circle, rgba(140, 80, 160, 0.4), transparent 70%);
+      bottom: -8%;
+      right: 5%;
+      animation-delay: -6s;
+      animation-duration: 22s;
+    }
+
+    .blob-3 {
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(60, 160, 180, 0.35), transparent 70%);
+      top: 40%;
+      right: 25%;
+      animation-delay: -12s;
+      animation-duration: 26s;
+    }
+
+    @keyframes drift {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(30px, -25px) scale(1.05); }
+      66% { transform: translate(-20px, 15px) scale(0.96); }
+    }
+
+    /* Particles */
+    .particles {
+      position: absolute;
+      inset: 0;
+    }
+
+    .particle {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 50%;
+      box-shadow: 0 0 6px rgba(180, 200, 255, 0.4);
+      animation: float-p linear infinite;
+    }
+
+    @keyframes float-p {
+      0% { transform: translateY(100vh) scale(0); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 0.6; }
+      100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+    }
+
+    /* Soft light sources */
+    .light-source {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      border-radius: 50%;
+      box-shadow: 0 0 120px 60px rgba(140, 170, 255, 0.08);
+    }
+
+    .light-a { top: 20%; left: 30%; box-shadow: 0 0 150px 80px rgba(120, 150, 220, 0.1); }
+    .light-b { bottom: 25%; right: 20%; box-shadow: 0 0 140px 70px rgba(160, 100, 180, 0.08); }
+
+    /* Stage */
+    .stage {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2.5rem;
+      padding: 2rem;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    /* ─── Liquid Glass Panel ─── */
+    .glass-panel {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      height: 180px;
+      border-radius: 24px;
+      cursor: default;
+      isolation: isolate;
+      transform: translateZ(0);
+      transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+                  box-shadow 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+      /* Layered physical shadows */
+      box-shadow:
+        0 2px 4px rgba(0, 0, 0, 0.15),
+        0 8px 24px rgba(0, 0, 0, 0.25),
+        0 24px 48px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+    }
+
+    .glass-panel:hover {
+      transform: translateY(-2px) scale(1.008);
+      box-shadow:
+        0 4px 8px rgba(0, 0, 0, 0.18),
+        0 12px 32px rgba(0, 0, 0, 0.28),
+        0 32px 64px rgba(0, 0, 0, 0.32),
+        0 0 0 1px rgba(255, 255, 255, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+    }
+
+    .glass-panel:active {
+      transform: translateY(0) scale(0.995);
+      transition-duration: 0.15s;
+    }
+
+    /* Glass material base */
+    .glass-material {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background:
+        linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.09) 0%,
+          rgba(255, 255, 255, 0.03) 40%,
+          rgba(255, 255, 255, 0.01) 60%,
+          rgba(255, 255, 255, 0.05) 100%
+        );
+      backdrop-filter: blur(40px) saturate(1.6);
+      -webkit-backdrop-filter: blur(40px) saturate(1.6);
+      overflow: hidden;
+    }
+
+    /* Soft edge border via pseudo */
+    .glass-material::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(
+        145deg,
+        rgba(255, 255, 255, 0.28) 0%,
+        rgba(255, 255, 255, 0.05) 30%,
+        rgba(255, 255, 255, 0.02) 50%,
+        rgba(255, 255, 255, 0.08) 80%,
+        rgba(255, 255, 255, 0.18) 100%
+      );
+      -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    /* Specular highlight that tracks pointer */
+    .glass-specular {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(
+        ellipse 90% 70% at var(--mouse-x) var(--mouse-y),
+        rgba(255, 255, 255, 0.18) 0%,
+        rgba(255, 255, 255, 0.06) 25%,
+        transparent 55%
+      );
+      pointer-events: none;
+      mix-blend-mode: soft-light;
+      transition: opacity 0.3s ease;
+      opacity: 0.7;
+    }
+
+    .glass-panel:hover .glass-specular {
+      opacity: 1;
+    }
+
+    /* Secondary refraction layer */
+    .glass-refraction {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(
+        circle 140px at var(--mouse-x) var(--mouse-y),
+        rgba(180, 200, 255, 0.08) 0%,
+        rgba(140, 160, 220, 0.03) 40%,
+        transparent 70%
+      );
+      pointer-events: none;
+      mix-blend-mode: screen;
+      opacity: 0.8;
+    }
+
+    /* Inner depth rim */
+    .glass-rim {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow:
+        inset 0 1.5px 1px rgba(255, 255, 255, 0.15),
+        inset 0 -1.5px 2px rgba(0, 0, 0, 0.12),
+        inset 1.5px 0 1px rgba(255, 255, 255, 0.04),
+        inset -1.5px 0 1px rgba(0, 0, 0, 0.04);
+      pointer-events: none;
+    }
+
+    /* Noise grain for material realism */
+    .glass-noise {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      opacity: 0.035;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 128px;
+      mix-blend-mode: overlay;
+    }
+
+    /* Top edge caustic line */
+    .glass-caustic {
+      position: absolute;
+      top: 0;
+      left: 10%;
+      right: 10%;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.35) 20%,
+        rgba(255, 255, 255, 0.5) 50%,
+        rgba(255, 255, 255, 0.35) 80%,
+        transparent 100%
+      );
+      border-radius: 1px;
+      pointer-events: none;
+      opacity: 0.6;
+      filter: blur(0.5px);
+    }
+
+    /* Content layout */
+    .glass-content {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      height: 100%;
+      padding: 0 28px;
+      gap: 22px;
+    }
+
+    /* ─── Command Orb ─── */
+    .command-orb-wrap {
+      position: relative;
+      flex-shrink: 0;
+      width: 72px;
+      height: 72px;
+    }
+
+    .command-orb {
+      position: relative;
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      background: transparent;
+      padding: 0;
+      transform: scale(1);
+      transition: transform 0.4s cubic-bezier(0.34, 1.4, 0.64, 1);
+    }
+
+    .command-orb:hover {
+      transform: scale(1.08);
+    }
+
+    .command-orb:active {
+      transform: scale(0.92);
+      transition-duration: 0.12s;
+    }
+
+    .command-orb:focus-visible {
+      outline: 2px solid rgba(180, 200, 255, 0.5);
+      outline-offset: 4px;
+    }
+
+    /* Orb glass body */
+    .orb-body {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background:
+        radial-gradient(
+          circle at 35% 30%,
+          rgba(255, 255, 255, 0.25) 0%,
+          rgba(200, 210, 240, 0.08) 40%,
+          rgba(120, 140, 180, 0.06) 70%,
+          rgba(80, 100, 140, 0.1) 100%
+        );
+      backdrop-filter: blur(12px) saturate(1.4);
+      -webkit-backdrop-filter: blur(12px) saturate(1.4);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.15),
+        0 4px 16px rgba(0, 0, 0, 0.3),
+        0 0 24px rgba(140, 170, 255, 0.12),
+        inset 0 2px 4px rgba(255, 255, 255, 0.25),
+        inset 0 -2px 6px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+      transition: box-shadow 0.4s ease;
+    }
+
+    .command-orb:hover .orb-body {
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.22),
+        0 6px 24px rgba(0, 0, 0, 0.35),
+        0 0 40px rgba(140, 170, 255, 0.22),
+        inset 0 2px 6px rgba(255, 255, 255, 0.3),
+        inset 0 -2px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Orb specular rim tracking pointer */
+    .orb-specular {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(
+        circle at var(--orb-mx) var(--orb-my),
+        rgba(255, 255, 255, 0.4) 0%,
+        rgba(255, 255, 255, 0.1) 30%,
+        transparent 55%
+      );
+      pointer-events: none;
+      mix-blend-mode: soft-light;
+    }
+
+    /* Rotating light reflection */
+    .orb-reflection {
+      position: absolute;
+      width: 20px;
+      height: 10px;
+      top: 12%;
+      left: 28%;
+      border-radius: 50%;
+      background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.7) 0%,
+        rgba(255, 255, 255, 0.15) 100%
+      );
+      filter: blur(2px);
+      pointer-events: none;
+      animation: orb-spin-reflect 8s linear infinite;
+      transform-origin: 18px 28px;
+    }
+
+    @keyframes orb-spin-reflect {
+      0% { transform: rotate(0deg) translateX(0); opacity: 0.7; }
+      25% { opacity: 0.9; }
+      50% { transform: rotate(180deg) translateX(4px); opacity: 0.5; }
+      75% { opacity: 0.85; }
+      100% { transform: rotate(360deg) translateX(0); opacity: 0.7; }
+    }
+
+    /* Inner glow core */
+    .orb-core {
+      position: absolute;
+      inset: 18%;
+      border-radius: 50%;
+      background: radial-gradient(
+        circle,
+        rgba(180, 200, 255, 0.15) 0%,
+        rgba(140, 160, 220, 0.05) 50%,
+        transparent 100%
+      );
+      pointer-events: none;
+      animation: core-pulse 3.5s ease-in-out infinite;
+    }
+
+    @keyframes core-pulse {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.08); }
+    }
+
+    /* Idle breathing ring */
+    .orb-ring {
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 1px solid rgba(180, 200, 255, 0.15);
+      pointer-events: none;
+      animation: ring-breathe 3.5s ease-in-out infinite;
+    }
+
+    @keyframes ring-breathe {
+      0%, 100% { transform: scale(1); opacity: 0.4; }
+      50% { transform: scale(1.06); opacity: 0.8; }
+    }
+
+    .command-orb:hover .orb-ring {
+      border-color: rgba(180, 200, 255, 0.35);
+      animation-duration: 2s;
+    }
+
+    /* Click ripple */
+    .orb-ripple {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 1.5px solid rgba(200, 220, 255, 0.5);
+      pointer-events: none;
+      opacity: 0;
+      transform: scale(0.8);
+    }
+
+    .command-orb.clicked .orb-ripple {
+      animation: ripple-out 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes ripple-out {
+      0% { opacity: 0.8; transform: scale(0.85); }
+      100% { opacity: 0; transform: scale(1.6); }
+    }
+
+    /* Icon */
+    .orb-icon {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      line-height: 1;
+      filter: drop-shadow(0 0 8px rgba(200, 220, 255, 0.4));
+      transition: transform 0.4s cubic-bezier(0.34, 1.4, 0.64, 1),
+                  filter 0.3s ease;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .command-orb:hover .orb-icon {
+      transform: scale(1.1);
+      filter: drop-shadow(0 0 14px rgba(200, 220, 255, 0.6));
+    }
+
+    .command-orb:active .orb-icon {
+      transform: scale(0.9);
+    }
+
+    /* ─── Text / Meta ─── */
+    .panel-meta {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .panel-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(200, 210, 230, 0.45);
+    }
+
+    .panel-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.88);
+      letter-spacing: -0.01em;
+      line-height: 1.3;
+    }
+
+    .panel-desc {
+      font-size: 13px;
+      font-weight: 400;
+      color: rgba(200, 210, 230, 0.4);
+      line-height: 1.4;
+      max-width: 220px;
+    }
+
+    /* Status pill */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+      padding: 3px 10px 3px 8px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      width: fit-content;
+      backdrop-filter: blur(8px);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #6ee7a0;
+      box-shadow: 0 0 8px rgba(110, 231, 160, 0.5);
+      animation: status-pulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes status-pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(110, 231, 160, 0.5); }
+      50% { opacity: 0.6; box-shadow: 0 0 4px rgba(110, 231, 160, 0.3); }
+    }
+
+    .status-text {
+      font-size: 11px;
+      font-weight: 450;
+      color: rgba(200, 220, 210, 0.55);
+      letter-spacing: 0.02em;
+    }
+
+    /* ─── Hint bar ─── */
+    .hint-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px) saturate(1.3);
+      -webkit-backdrop-filter: blur(20px) saturate(1.3);
+      box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .hint-key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 20px;
+      padding: 0 5px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 500;
+      font-family: inherit;
+      color: rgba(220, 230, 255, 0.6);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .hint-label {
+      font-size: 12px;
+      color: rgba(200, 210, 230, 0.35);
+      font-weight: 400;
+    }
+
+    /* ─── Feedback toast ─── */
+    .toast {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      padding: 10px 20px;
+      border-radius: 14px;
+      background: rgba(20, 24, 40, 0.7);
+      backdrop-filter: blur(24px) saturate(1.5);
+      -webkit-backdrop-filter: blur(24px) saturate(1.5);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 13px;
+      font-weight: 450;
+      letter-spacing: 0.01em;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                  transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+      z-index: 100;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 480px) {
+      .glass-panel {
+        max-width: 100%;
+        height: auto;
+        min-height: 160px;
+        border-radius: 20px;
+      }
+
+      .glass-content {
+        padding: 24px 20px;
+        gap: 16px;
+      }
+
+      .command-orb-wrap,
+      .command-orb {
+        width: 60px;
+        height: 60px;
+      }
+
+      .orb-icon {
+        font-size: 22px;
+      }
+
+      .panel-title {
+        font-size: 16px;
+      }
+
+      .panel-desc {
+        font-size: 12px;
+        max-width: 100%;
+      }
+
+      .stage {
+        padding: 1.25rem;
+        gap: 1.75rem;
+      }
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .blob,
+      .particle,
+      .orb-reflection,
+      .orb-core,
+      .orb-ring,
+      .status-dot {
+        animation: none;
+      }
+
+      .glass-panel,
+      .command-orb,
+      .orb-icon,
+      .toast {
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="light-source light-a"></div>
+    <div class="light-source light-b"></div>
+    <div class="particles" id="particles"></div>
+  </div>
+
+  <div class="stage">
+    <div
+      class="glass-panel"
+      id="glassPanel"
+      role="region"
+      aria-label="Liquid Glass Command Orb"
+    >
+      <div class="glass-material">
+        <div class="glass-specular" id="specular"></div>
+        <div class="glass-refraction" id="refraction"></div>
+        <div class="glass-noise"></div>
+        <div class="glass-caustic"></div>
+        <div class="glass-rim"></div>
+      </div>
+
+      <div class="glass-content">
+        <div class="command-orb-wrap">
+          <button
+            class="command-orb"
+            id="commandOrb"
+            type="button"
+            aria-label="Activate command"
+            title="Activate"
+          >
+            <span class="orb-body">
+              <span class="orb-specular" id="orbSpecular"></span>
+              <span class="orb-reflection"></span>
+              <span class="orb-core"></span>
+            </span>
+            <span class="orb-ring"></span>
+            <span class="orb-ripple" id="orbRipple"></span>
+            <span class="orb-icon" aria-hidden="true">✨</span>
+          </button>
+        </div>
+
+        <div class="panel-meta">
+          <span class="panel-label">Command Surface</span>
+          <h2 class="panel-title">Liquid Glass Orb</h2>
+          <p class="panel-desc">Spatial control node · refractive interface</p>
+          <div class="status-pill">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span class="status-text">System ready</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hint-bar" aria-hidden="true">
+      <span class="hint-key">⌘</span>
+      <span class="hint-key">K</span>
+      <span class="hint-label">or click the orb to invoke</span>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">Command invoked</div>
+
+  <script>
+    (function () {
+      const panel = document.getElementById('glassPanel');
+      const orb = document.getElementById('commandOrb');
+      const toast = document.getElementById('toast');
+      const particlesEl = document.getElementById('particles');
+
+      /* ── Particles ── */
+      const PARTICLE_COUNT = 28;
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const p = document.createElement('span');
+        p.className = 'particle';
+        p.style.left = Math.random() * 100 + '%';
+        p.style.animationDuration = 12 + Math.random() * 18 + 's';
+        p.style.animationDelay = Math.random() * 20 + 's';
+        const size = 1 + Math.random() * 2;
+        p.style.width = size + 'px';
+        p.style.height = size + 'px';
+        p.style.opacity = 0.3 + Math.random() * 0.5;
+        particlesEl.appendChild(p);
+      }
+
+      /* ── Pointer tracking for liquid refraction ── */
+      let raf = null;
+      let targetX = 0.5;
+      let targetY = 0.5;
+      let currentX = 0.5;
+      let currentY = 0.5;
+
+      function lerp(a, b, t) {
+        return a + (b - a) * t;
+      }
+
+      function updateGlassVars() {
+        currentX = lerp(currentX, targetX, 0.12);
+        currentY = lerp(currentY, targetY, 0.12);
+
+        const mx = (currentX * 100).toFixed(2) + '%';
+        const my = (currentY * 100).toFixed(2) + '%';
+
+        panel.style.setProperty('--mouse-x', mx);
+        panel.style.setProperty('--mouse-y', my);
+
+        const dx = currentX - targetX;
+        const dy = currentY - targetY;
+        if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+          raf = requestAnimationFrame(updateGlassVars);
+        } else {
+          raf = null;
+        }
+      }
+
+      panel.addEventListener('pointermove', (e) => {
+        const rect = panel.getBoundingClientRect();
+        targetX = (e.clientX - rect.left) / rect.width;
+        targetY = (e.clientY - rect.top) / rect.height;
+        if (!raf) raf = requestAnimationFrame(updateGlassVars);
+      });
+
+      panel.addEventListener('pointerleave', () => {
+        targetX = 0.5;
+        targetY = 0.5;
+        if (!raf) raf = requestAnimationFrame(updateGlassVars);
+      });
+
+      /* ── Orb local pointer specular ── */
+      orb.addEventListener('pointermove', (e) => {
+        const rect = orb.getBoundingClientRect();
+        const ox = ((e.clientX - rect.left) / rect.width * 100).toFixed(1) + '%';
+        const oy = ((e.clientY - rect.top) / rect.height * 100).toFixed(1) + '%';
+        orb.style.setProperty('--orb-mx', ox);
+        orb.style.setProperty('--orb-my', oy);
+      });
+
+      orb.addEventListener('pointerleave', () => {
+        orb.style.setProperty('--orb-mx', '35%');
+        orb.style.setProperty('--orb-my', '30%');
+      });
+
+      /* ── Orb click interaction ── */
+      let toastTimer = null;
+
+      function invokeCommand() {
+        orb.classList.remove('clicked');
+        void orb.offsetWidth;
+        orb.classList.add('clicked');
+
+        toast.textContent = getRandomFeedback();
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toast.classList.remove('show');
+        }, 1800);
+
+        setTimeout(() => orb.classList.remove('clicked'), 650);
+      }
+
+      const feedbacks = [
+        'Command invoked',
+        'Orb resonance confirmed',
+        'Spatial link established',
+        'Glass surface activated',
+        'Node pulse sent',
+      ];
+
+      function getRandomFeedback() {
+        return feedbacks[Math.floor(Math.random() * feedbacks.length)];
+      }
+
+      orb.addEventListener('click', invokeCommand);
+
+      /* Keyboard shortcut ⌘K / Ctrl+K */
+      document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+          e.preventDefault();
+          invokeCommand();
+          orb.focus();
+        }
+      });
+
+      /* Subtle idle parallax on panel via device orientation fallback: mouse on document */
+      let globalRaf = null;
+      let gTargetX = 0;
+      let gTargetY = 0;
+      let gCurrentX = 0;
+      let gCurrentY = 0;
+
+      document.addEventListener('pointermove', (e) => {
+        gTargetX = (e.clientX / window.innerWidth - 0.5) * 2;
+        gTargetY = (e.clientY / window.innerHeight - 0.5) * 2;
+        if (!globalRaf) globalRaf = requestAnimationFrame(tickGlobal);
+      });
+
+      function tickGlobal() {
+        gCurrentX = lerp(gCurrentX, gTargetX, 0.06);
+        gCurrentY = lerp(gCurrentY, gTargetY, 0.06);
+
+        const tiltX = gCurrentY * -3;
+        const tiltY = gCurrentX * 3;
+        panel.style.transform =
+          panel.matches(':hover') || panel.matches(':active')
+            ? undefined
+            : `perspective(800px) rotateX(${tiltX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg)`;
+
+        if (
+          Math.abs(gCurrentX - gTargetX) > 0.002 ||
+          Math.abs(gCurrentY - gTargetY) > 0.002
+        ) {
+          globalRaf = requestAnimationFrame(tickGlobal);
+        } else {
+          globalRaf = null;
+        }
+      }
+
+      /* Clear tilt on panel hover so hover lift wins */
+      panel.addEventListener('pointerenter', () => {
+        panel.style.transform = '';
+      });
+    })();
+  </script>
+</body>
+</html>
